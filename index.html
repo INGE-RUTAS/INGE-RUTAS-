@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Iac rutas</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--tx:#1d2330;--mut:#667085;--ac:#1f6feb;--ok:#1a7f37;--bd:#dde2ea;--warn:#b42318}
+@media (prefers-color-scheme: dark){:root{--bg:#0f1218;--card:#181c24;--tx:#e8ebf0;--mut:#9aa3b2;--ac:#58a6ff;--ok:#3fb950;--bd:#2a303c;--warn:#f97066}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.4;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+main{max-width:640px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:4px 0 10px}
+h2{font-size:16px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.mut{color:var(--mut);font-size:13px}
+label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
+input,select{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:15px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{padding:10px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-size:14px;cursor:pointer}
+button.sec{background:transparent;color:var(--ac);border:1px solid var(--bd)}
+button.danger{background:transparent;color:var(--warn);border:1px solid var(--bd);padding:5px 10px;font-size:12px}
+button.small{padding:6px 10px;font-size:12px}
+.full{width:100%;margin-top:10px}
+.it{border-top:1px solid var(--bd);padding:10px 0}
+.it:first-child{border-top:0}
+.ok{color:var(--ok);font-size:13px}
+.warn{color:var(--warn);font-size:13px}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+a.btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--ac);color:#fff;text-decoration:none;font-size:13px}
+.carro{border-top:1px solid var(--bd);padding-top:10px;margin-top:10px}
+.parada{padding:6px 0}
+</style>
+</head>
+<body>
+<div id="login" style="display:none;position:fixed;inset:0;z-index:99;background:#fff;padding:28px;text-align:center;overflow:auto">
+  <img src="icon-192.png" width="110" height="110" alt="Iac">
+  <h2 style="margin:10px 0">Iac rutas</h2>
+  <input id="lemail" type="email" placeholder="Correo" autocomplete="username" style="margin-bottom:8px">
+  <input id="lclave" type="password" placeholder="Contraseña" autocomplete="current-password">
+  <button onclick="entrar()" style="margin-top:10px;width:100%">Entrar</button>
+  <p id="lmsg" style="color:#c00"></p>
+</div>
+<main>
+  <h1>Rutas de entrega</h1>
+
+  <div class="card">
+    <h2>Configuración</h2>
+    <div class="row">
+      <div>
+        <label>Ciudad (para ubicar direcciones)</label>
+        <input id="ciudad" placeholder="Ej: Medellín, Colombia">
+      </div>
+      <div>
+        <label>Punto de salida (la tienda)</label>
+        <input id="origen" placeholder="Dirección de la tienda">
+      </div>
+    </div>
+    <div class="btns">
+      <button class="small" onclick="usarSalida(0)">1- INGEALUMINIOS 7 DE AGOSTO</button>
+      <button class="small" onclick="usarSalida(1)">2- INGEALUMIOS PRINCIPAL</button>
+      <button class="small sec" onclick="ubicarOrigen()">Ubicar salida</button>
+      <button class="small sec" onclick="origenGPS()">Usar mi GPS como salida</button>
+      <button class="small sec" onclick="origenPegar()">Pegar coordenadas de salida</button>
+    </div>
+    <p id="origenEst" class="mut"></p>
+  </div>
+
+  <div class="card">
+    <h2>Nuevo pedido</h2>
+    <label>Cliente</label>
+    <input id="cliente" placeholder="Nombre del cliente">
+    <label>Dirección</label>
+    <input id="dir" placeholder="Calle 10 # 20-30">
+    <div class="row">
+      <div>
+        <label>Barrio</label>
+        <input id="zona" placeholder="Ej: Laureles">
+      </div>
+      <div>
+        <label>Teléfono</label>
+        <input id="tel" placeholder="Opcional">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Producto</label>
+        <select id="prod">
+          <option>Policarbonato alveolar</option>
+          <option>Policarbonato macizo</option>
+          <option>Teja</option>
+          <option>Aluminio</option>
+        </select>
+      </div>
+      <div>
+        <label>Cantidad / medidas</label>
+        <input id="cant" placeholder="Ej: 10 láminas 6x2 m">
+      </div>
+    </div>
+    <label>Coordenadas exactas (opcional)</label>
+    <input id="coord" placeholder="Pegue coordenadas o enlace de Google Maps">
+    <label>Notas</label>
+    <input id="notas" placeholder="Opcional">
+    <button class="full" onclick="addPedido()">Guardar y ubicar</button>
+    <p id="estado" class="mut"></p>
+  </div>
+
+  <div class="card">
+    <h2>Clientes guardados</h2>
+    <input id="buscar" placeholder="Buscar por nombre, dirección o barrio" oninput="renderClientes()">
+    <p id="dbEst" class="mut">Conectando...</p>
+    <h2 style="margin-top:10px">⭐ Clientes frecuentes <span id="nF" class="mut"></span></h2>
+    <div id="listaF"></div>
+    <h2 style="margin-top:14px">Clientes <span id="nC" class="mut"></span></h2>
+    <div id="listaC"></div>
+  </div>
+
+  <div class="card">
+    <h2>Pedidos de hoy <span id="total" class="mut"></span></h2>
+    <div id="lista"></div>
+  </div>
+
+  <div class="card">
+    <h2>Rutas de los carros</h2>
+    <div class="row">
+      <div>
+        <label>Conductor Carro 1</label>
+        <input id="c1" placeholder="Nombre">
+      </div>
+      <div>
+        <label>Conductor Carro 2</label>
+        <input id="c2" placeholder="Nombre">
+      </div>
+    </div>
+    <button class="full" onclick="organizar()">Organizar rutas</button>
+    <div id="out"></div>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+// SALIDA FIJA: escriba aquí una sola vez los datos de la tienda.
+// Las coordenadas (lat, lon) hacen que la salida quede fijada en todos los equipos
+// donde se abra esta versión, sin tener que volver a ubicarla.
+const SALIDA_FIJA = {ciudad:'', dir:'', lat:null, lon:null};
+
+let st = {ciudad:'', origen:null, pedidos:[]};
+try { Object.assign(st, JSON.parse(localStorage.getItem('rutas_v2') || '{}')); } catch(e){}
+
+// PUNTOS DE SALIDA FIJOS: se eligen con un solo clic en cualquier equipo.
+const SALIDAS = [
+  {nombre:'1- INGEALUMINIOS 7 DE AGOSTO', dir:'1- INGEALUMINIOS 7 DE AGOSTO', ciudad:'Bogotá, Colombia', lat:4.660204675953308, lon:-74.07140033240111},
+  {nombre:'2- INGEALUMIOS PRINCIPAL', dir:'2- INGEALUMIOS PRINCIPAL', ciudad:'Bogotá, Colombia', lat:4.607335278741601, lon:-74.12659350356495}
+];
+
+async function usarSalida(i){
+  const s = SALIDAS[i];
+  st.ciudad = s.ciudad;
+  st.origenDir = s.dir;
+  if(s.lat!=null){ st.origen = {lat:s.lat, lon:s.lon, fuente:'fija'}; save(); renderOrigen(); return; }
+  $('origenEst').textContent = 'Ubicando ' + s.nombre + '...';
+  const g = await geocode(s.dir + ', ' + s.ciudad);
+  st.origen = g ? {lat:g.lat, lon:g.lon, fuente:'fija'} : null;
+  save(); renderOrigen();
+  if(!g) alert('No se pudo ubicar ' + s.nombre + '. Use "Pegar coordenadas de salida".');
+}
+if(SALIDA_FIJA.lat!=null && SALIDA_FIJA.lon!=null){
+  st.origen = {lat:SALIDA_FIJA.lat, lon:SALIDA_FIJA.lon, fuente:'fija'};
+  st.origenDir = SALIDA_FIJA.dir;
+  st.ciudad = SALIDA_FIJA.ciudad || st.ciudad;
+}
+
+function save(){
+  try{ localStorage.setItem('rutas_v2', JSON.stringify(st)); }
+  catch(e){ alert('Este navegador no guarda datos. Abra la app en Chrome normal (no en modo incógnito).'); }
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// Geocodificación con OpenStreetMap (Nominatim). Uso moderado: 1 consulta por segundo.
+async function geocode(q){
+  try{
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&q='+encodeURIComponent(q));
+    const j = await r.json();
+    return j[0] ? {lat:+j[0].lat, lon:+j[0].lon} : null;
+  }catch(e){ return null; }
+}
+
+// GPS del celular
+function gps(){
+  return new Promise((ok, no)=>{
+    if(!navigator.geolocation) return no('Este equipo no tiene GPS disponible');
+    navigator.geolocation.getCurrentPosition(
+      p=>ok({lat:p.coords.latitude, lon:p.coords.longitude}),
+      ()=>no('No se pudo leer el GPS. Revise que tenga la ubicación activada para el navegador.'),
+      {enableHighAccuracy:true, timeout:15000, maximumAge:0}
+    );
+  });
+}
+
+function km(a,b){
+  const R=6371, toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat), dLon=toR(b.lon-a.lon);
+  const h=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+function ciudadQ(){ return st.ciudad ? ', '+st.ciudad : ''; }
+
+function renderOrigen(){
+  $('ciudad').value = st.ciudad || '';
+  $('origen').value = st.origenDir || '';
+  $('origenEst').innerHTML = st.origen
+    ? '<span class="ok">✔ Salida ubicada</span>' + (st.origenDir ? ' · ' + esc(st.origenDir) : '')
+    : '<span class="warn">Falta ubicar la salida</span>';
+}
+
+async function ubicarOrigen(){
+  st.ciudad = $('ciudad').value.trim();
+  st.origenDir = $('origen').value.trim();
+  if(!st.origenDir){ alert('Escriba la dirección de la tienda'); return; }
+  $('origenEst').textContent = 'Buscando dirección...';
+  const g = await geocode(st.origenDir + ciudadQ());
+  st.origen = g ? {...g, fuente:'mapa'} : null;
+  save(); renderOrigen();
+  if(!g) alert('No encontré esa dirección. Pruebe con el GPS estando en la tienda.');
+}
+
+async function origenGPS(){
+  st.ciudad = $('ciudad').value.trim();
+  try{
+    $('origenEst').textContent = 'Leyendo GPS...';
+    const g = await gps();
+    st.origen = {...g, fuente:'GPS'};
+    save(); renderOrigen();
+  }catch(e){ alert(e); renderOrigen(); }
+}
+
+async function addPedido(){
+  const c=$('cliente').value.trim(), d=$('dir').value.trim();
+  if(!c || !d){ alert('Escriba el cliente y la dirección'); return; }
+  const p = {id:Date.now(), cliente:c, dir:d,
+    zona:$('zona').value.trim(), prod:$('prod').value,
+    cant:$('cant').value.trim(), tel:$('tel').value.trim(), notas:$('notas').value.trim(),
+    lat:null, lon:null, fuente:null};
+  const cz = parseCoord($('coord').value);
+  if(cz){ p.lat=cz.lat; p.lon=cz.lon; p.fuente='coordenadas'; }
+  $('coord').value='';
+  st.pedidos.push(p); save();
+  ['cliente','dir','zona','cant','tel','notas'].forEach(i=>$(i).value='');
+  render();
+  if(!p.lat){
+    $('estado').textContent = 'Ubicando la dirección...';
+    await ubicar(p);
+  }
+  $('estado').textContent = p.lat ? 'Pedido ubicado ✔' : 'No se encontró la dirección: use "Mi GPS" en la lista.';
+  guardarCliente(p);
+}
+
+// Lee coordenadas en formato "6.2442, -75.5812" o desde un enlace de Google Maps
+function parseCoord(s){
+  s = (s||'').trim();
+  if(!s) return null;
+  const m = s.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
+    || s.match(/[?&](?:q|ll|query|destination|daddr)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/i)
+    || s.match(/(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
+  if(!m) return null;
+  const lat=+m[1], lon=+m[2];
+  if(Math.abs(lat)>90 || Math.abs(lon)>180) return null;
+  return {lat, lon};
+}
+
+function pegarCoord(){
+  return parseCoord(prompt('Pegue las coordenadas (ej: 6.2442, -75.5812) o el enlace de Google Maps:'));
+}
+
+function pasteCoord(id){
+  const p = st.pedidos.find(x=>x.id===id);
+  const cz = pegarCoord();
+  if(!cz){ alert('No reconocí las coordenadas. Revise el formato.'); return; }
+  p.lat=cz.lat; p.lon=cz.lon; p.fuente='coordenadas';
+  save(); render();
+}
+
+function origenPegar(){
+  const cz = pegarCoord();
+  if(!cz){ alert('No reconocí las coordenadas. Revise el formato.'); return; }
+  st.origen = {lat:cz.lat, lon:cz.lon, fuente:'coordenadas'};
+  save(); renderOrigen();
+}
+
+async function ubicar(p){
+  const g = await geocode(p.dir + (p.zona?', '+p.zona:'') + ciudadQ());
+  if(g){ p.lat=g.lat; p.lon=g.lon; p.fuente='mapa'; }
+  save(); render();
+}
+
+async function gpsPedido(id){
+  const p = st.pedidos.find(x=>x.id===id);
+  try{
+    const g = await gps();
+    p.lat=g.lat; p.lon=g.lon; p.fuente='GPS';
+    save(); render();
+  }catch(e){ alert(e); }
+}
+
+function del(id){
+  st.pedidos = st.pedidos.filter(p=>p.id!==id);
+  save(); $('out').innerHTML=''; render();
+}
+
+function render(){
+  $('total').textContent = st.pedidos.length ? '('+st.pedidos.length+')' : '';
+  renderOrigen();
+  if(!st.pedidos.length){ $('lista').innerHTML='<p class="mut">Sin pedidos todavía.</p>'; return; }
+  $('lista').innerHTML = st.pedidos.slice().sort((a,b)=>(a.zona||'').localeCompare(b.zona||'')).map(p=>`
+    <div class="it">
+      <b>${esc(p.cliente)}</b> <span class="mut">· ${esc(p.zona||'Sin barrio')}</span><br>
+      ${esc(p.dir)}<br>
+      <span class="mut">${esc(p.prod)} ${esc(p.cant)}${p.tel?' · '+esc(p.tel):''}${p.notas?' · '+esc(p.notas):''}</span><br>
+      ${p.lat
+        ? `<span class="ok">📍 Ubicado por ${p.fuente}</span>`
+        : `<span class="warn">⚠ Sin ubicar</span>`}
+      <div class="btns">
+        ${p.lat ? '' : `<button class="small" onclick="ubicar(st.pedidos.find(x=>x.id===${p.id}))">Reintentar</button>`}
+        <button class="small sec" onclick="pasteCoord(${p.id})">Pegar coordenadas</button>
+        <button class="small sec" onclick="gpsPedido(${p.id})">Usar mi GPS aquí</button>
+        <button class="danger" onclick="del(${p.id})">Eliminar</button>
+      </div>
+    </div>`).join('');
+}
+
+// Reparte los pedidos en 2 grupos por cercanía (k-means con k=2)
+function dividir(pts){
+  if(pts.length<=1) return [pts, []];
+  let c1 = pts[0];
+  let c2 = pts.reduce((m,p)=> km(c1,p)>km(c1,m)?p:m, pts[0]);
+  let A=[], B=[];
+  for(let it=0; it<10; it++){
+    A=[]; B=[];
+    pts.forEach(p=> (km(p,c1)<=km(p,c2)?A:B).push(p));
+    const media = g=>g.length? {lat:g.reduce((s,p)=>s+p.lat,0)/g.length, lon:g.reduce((s,p)=>s+p.lon,0)/g.length} : null;
+    c1 = media(A) || c1; c2 = media(B) || c2;
+  }
+  return [A,B];
+}
+
+// Orden de paradas: el más cercano al anterior, empezando en la salida
+function ordenar(grupo){
+  let cur = st.origen || {lat:grupo[0].lat, lon:grupo[0].lon};
+  const rest = grupo.slice(), orden = [];
+  let total = 0;
+  while(rest.length){
+    let bi=0;
+    for(let i=1;i<rest.length;i++) if(km(cur,rest[i])<km(cur,rest[bi])) bi=i;
+    const p = rest.splice(bi,1)[0];
+    total += km(cur,p); orden.push(p); cur = p;
+  }
+  return {orden, total};
+}
+
+function linkRuta(grupo){
+  const pts = grupo.map(p=>p.lat+','+p.lon);
+  const origen = st.origen ? st.origen.lat+','+st.origen.lon : pts[0];
+  const destino = pts[pts.length-1];
+  const mid = pts.slice(0,-1);
+  let u = 'https://www.google.com/maps/dir/?api=1&origin='+origen+'&destination='+destino+'&travelmode=driving';
+  if(mid.length) u += '&waypoints='+encodeURIComponent(mid.join('|'));
+  return u;
+}
+
+let textos = [];
+function organizar(){
+  const ub = st.pedidos.filter(p=>p.lat!=null);
+  const sin = st.pedidos.filter(p=>p.lat==null);
+  if(!ub.length){ alert('No hay pedidos ubicados'); return; }
+  const [A,B] = dividir(ub);
+  const nombres = [$('c1').value.trim(), $('c2').value.trim()];
+  textos = [];
+  let html = '';
+  [A,B].forEach((g,i)=>{
+    if(!g.length) return;
+    const {orden,total} = ordenar(g);
+    const carga = {};
+    orden.forEach(p=>carga[p.prod]=(carga[p.prod]||0)+1);
+    const titulo = `CARRO ${i+1}${nombres[i]?' - '+nombres[i]:''}`;
+    let t = `🚚 ${titulo} (${orden.length} entregas, ~${total.toFixed(1)} km en línea recta)\n\n`;
+    orden.forEach((p,n)=>{
+      t += `${n+1}. ${p.cliente} - ${p.dir}${p.zona?' ('+p.zona+')':''}\n   ${p.prod}${p.cant?' '+p.cant:''}${p.tel?' · Tel: '+p.tel:''}${p.notas?' · '+p.notas:''}\n   ${linkRuta([p])}\n`;
+    });
+    t += `\nCARGUE: `+Object.entries(carga).map(([k,v])=>`${k} x${v}`).join(', ');
+    t += `\nRUTA COMPLETA: ${linkRuta(orden)}`;
+    textos.push(t);
+    html += `<div class="carro">
+      <h2>${esc(titulo)} <span class="mut">${orden.length} entregas · ~${total.toFixed(1)} km</span></h2>
+      ${orden.map((p,n)=>`<div class="parada">${n+1}. <b>${esc(p.cliente)}</b> · ${esc(p.dir)}
+        <div class="btns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}" target="_blank">Ir a esta parada</a></div></div>`).join('')}
+      <div class="btns">
+        <a class="btn" href="${linkRuta(orden)}" target="_blank">Ruta completa en Maps</a>
+        <button class="sec small" onclick="compartir(${textos.length-1})">Compartir</button>
+      </div>
+    </div>`;
+  });
+  if(sin.length) html += `<p class="warn">Sin ubicar (no incluidos): ${sin.map(p=>esc(p.cliente)).join(', ')}</p>`;
+  $('out').innerHTML = html || '<p class="mut">No hay pedidos para repartir.</p>';
+}
+
+function compartir(i){
+  const t = textos[i];
+  if(navigator.share){ navigator.share({text:t}).catch(()=>{}); }
+  else { window.open('https://wa.me/?text='+encodeURIComponent(t)); }
+}
+
+// CLIENTES: base compartida (se ve igual en todos los equipos).
+// Misma dirección 2 o más veces = frecuente; una sola vez = cliente.
+let db=null, cli=[];
+const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,120);
+
+(async()=>{
+  try{
+    firebase.initializeApp({apiKey:"AIzaSyCWUp_r2m0vd9V3xJyI5fShJCZARMKKC2I",authDomain:"iac-rutas.firebaseapp.com",projectId:"iac-rutas",storageBucket:"iac-rutas.firebasestorage.app",messagingSenderId:"196905608042",appId:"1:196905608042:web:fc11901d19c65c67083b13"});
+    db=firebase.firestore(); let off=null;
+    firebase.auth().onAuthStateChanged(u=>{
+      $('login').style.display=u?'none':'block';
+      if(off){off();off=null;}
+      if(!u){ cli=[]; renderClientes(); return; }
+      off=db.collection('clientes').onSnapshot(
+        s=>{ cli=s.docs.map(d=>({id:d.id,...d.data()})); $('dbEst').textContent=''; renderClientes(); },
+        ()=>{ $('dbEst').textContent='⚠ No se pudieron leer los clientes (¿sin internet?).'; });
+    });
+  }catch(e){ $('dbEst').textContent='⚠ Sin conexión: los clientes no están disponibles.'; }
+})();
+
+async function entrar(){
+  $('lmsg').textContent='';
+  try{ await firebase.auth().signInWithEmailAndPassword($('lemail').value.trim(),$('lclave').value); }
+  catch(e){ $('lmsg').textContent='Correo o contraseña incorrectos.'; }
+}
+
+async function guardarCliente(p){
+  const id=norm(p.dir);
+  if(!db || !id) return;
+  try{
+    const ref=db.collection('clientes').doc(id), sn=await ref.get(), o=sn.exists?sn.data():{};
+    await ref.set({cliente:p.cliente, dir:p.dir, zona:p.zona||o.zona||'', tel:p.tel||o.tel||'',
+      lat:p.lat??o.lat??null, lon:p.lon??o.lon??null, veces:(o.veces||0)+1, ultimo:Date.now()});
+  }catch(e){ $('dbEst').textContent='⚠ No se pudo guardar el cliente.'; }
+}
+
+function renderClientes(){
+  const q=norm($('buscar').value), ok=c=>!q||norm([c.cliente,c.dir,c.zona].join(' ')).includes(q);
+  const F=cli.filter(c=>(c.veces||1)>=2&&ok(c)).sort((a,b)=>b.veces-a.veces);
+  const C=cli.filter(c=>(c.veces||1)<2&&ok(c)).sort((a,b)=>(a.cliente||'').localeCompare(b.cliente||''));
+  const fila=c=>`<div class="it"><b>${esc(c.cliente||'')}</b> <span class="mut">· ${esc(c.zona||'Sin barrio')} · ${c.veces||1} pedido(s)</span><br>
+    ${esc(c.dir||'')}${c.tel?'<br><span class="mut">'+esc(c.tel)+'</span>':''}
+    <div class="btns"><button class="small" onclick="usarCliente('${c.id}')">Usar en pedido</button>
+    <button class="danger" onclick="borrarCliente('${c.id}')">Eliminar</button></div></div>`;
+  $('nF').textContent=F.length?'('+F.length+')':''; $('nC').textContent=C.length?'('+C.length+')':'';
+  $('listaF').innerHTML=F.map(fila).join('')||'<p class="mut">Aún no hay frecuentes.</p>';
+  $('listaC').innerHTML=C.map(fila).join('')||'<p class="mut">Sin clientes todavía.</p>';
+}
+
+function usarCliente(id){
+  const c=cli.find(x=>x.id===id); if(!c) return;
+  $('cliente').value=c.cliente||''; $('dir').value=c.dir||''; $('zona').value=c.zona||''; $('tel').value=c.tel||'';
+  $('coord').value=c.lat!=null?c.lat+', '+c.lon:'';
+  $('cliente').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function borrarCliente(id){
+  if(!db||!confirm('¿Eliminar este cliente de la carpeta?')) return;
+  try{ await db.collection('clientes').doc(id).delete(); }catch(e){ alert('No se pudo eliminar.'); }
+}
+
+render();
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
