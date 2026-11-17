@@ -395,14 +395,25 @@ function ordenar(grupo){
   return {orden, total};
 }
 
-function linkRuta(grupo){
-  const pts = grupo.map(p=>p.lat+','+p.lon);
-  const origen = st.origen ? st.origen.lat+','+st.origen.lon : pts[0];
+function linkRuta(grupo, desde){
+  const pts = grupo.map(p=>p.lat.toFixed(6)+','+p.lon.toFixed(6));
+  const origen = desde || (st.origen ? st.origen.lat+','+st.origen.lon : pts[0]);
   const destino = pts[pts.length-1];
-  const mid = pts.slice(0,-1);
+  const mid = (desde||st.origen) ? pts.slice(0,-1) : pts.slice(1,-1);
   let u = 'https://www.google.com/maps/dir/?api=1&origin='+origen+'&destination='+destino+'&travelmode=driving';
   if(mid.length) u += '&waypoints='+encodeURIComponent(mid.join('|'));
   return u;
+}
+
+// Google Maps admite máximo 9 paradas intermedias por enlace: se parte en tramos de 10 paradas
+function tramos(orden){
+  const T=[]; let desde=null;
+  for(let i=0;i<orden.length;i+=10){
+    const g=orden.slice(i,i+10), u=g[g.length-1];
+    T.push({a:i+1, b:i+g.length, url:linkRuta(g,desde)});
+    desde=u.lat.toFixed(6)+','+u.lon.toFixed(6);
+  }
+  return T;
 }
 
 let textos = [];
@@ -420,17 +431,18 @@ function organizar(){
     const titulo = 'RUTA DE ENTREGA';
     let t = `🚚 ${titulo} (${orden.length} entregas, ~${total.toFixed(1)} km en línea recta)\n\n`;
     orden.forEach((p,n)=>{
-      t += `${n+1}. ${p.cliente} - ${p.dir}${p.zona?' ('+p.zona+')':''}\n   ${p.prod}${p.cant?' '+p.cant:''}${p.tel?' · Tel: '+p.tel:''}${p.notas?' · '+p.notas:''}\n   ${linkRuta([p])}\n`;
+      t += `${n+1}. ${p.cliente} - ${p.dir}${p.zona?' ('+p.zona+')':''}\n   📍 ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}\n   ${p.prod}${p.cant?' '+p.cant:''}${p.tel?' · Tel: '+p.tel:''}${p.notas?' · '+p.notas:''}\n   https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lon.toFixed(6)}\n`;
     });
     t += `\nCARGUE: `+Object.entries(carga).map(([k,v])=>`${k} x${v}`).join(', ');
-    t += `\nRUTA COMPLETA: ${linkRuta(orden)}`;
+    const T = tramos(orden);
+    T.forEach(x=>{ t += `\n${T.length>1?'RUTA PARADAS '+x.a+'-'+x.b:'RUTA COMPLETA'}: ${x.url}`; });
     textos.push(t);
     html += `<div class="carro">
       <h2>${esc(titulo)} <span class="mut">${orden.length} entregas · ~${total.toFixed(1)} km</span></h2>
-      ${orden.map((p,n)=>`<div class="parada">${n+1}. <b>${esc(p.cliente)}</b> · ${esc(p.dir)}
+      ${orden.map((p,n)=>`<div class="parada">${n+1}. <b>${esc(p.cliente)}</b> · ${esc(p.dir)}<br><span class="mut">📍 ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}</span>
         <div class="btns"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}" target="_blank">Ir a esta parada</a></div></div>`).join('')}
       <div class="btns">
-        <a class="btn" href="${linkRuta(orden)}" target="_blank">Ruta completa en Maps</a>
+        ${tramos(orden).map((x,_,A)=>`<a class="btn" href="${x.url}" target="_blank">${A.length>1?'Ruta paradas '+x.a+'-'+x.b:'Ruta completa en Maps'}</a>`).join('')}
         <button class="sec small" onclick="compartir(${textos.length-1})">Compartir</button>
       </div>
     </div>`;
